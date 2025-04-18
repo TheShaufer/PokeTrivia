@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Poké Trivia</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+    body {
+      font-family: 'Press Start 2P', monospace;
+      background: url('background.jpeg') repeat;
+      background-color: #fffeca;
+      color: #1B1B1B;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      animation: scrollBackground 60s linear infinite;
+      cursor: url('cursor.png') 16 16, auto;
+    }
+
+    * {
+      cursor: url('cursor.png') 16 16, auto !important;
+    }
+
+    @keyframes scrollBackground {
+      from {
+        background-position: 0 0;
+      }
+
+      to {
+        background-position: 0 1000px;
+      }
+    }
+
+    .title-box {
+      background-color: #FFECA8;
+      border: 4px double #E63946;
+      padding: 20px;
+      margin-top: 30px;
+      font-size: 1em;
+      font-family: 'Press Start 2P', monospace;
+      color: #1B1B1B;
+      box-shadow: inset 0 0 10px #00000055;
+      text-align: center;
+      max-width: 80%;
+    }
+
+    table {
+      border-collapse: collapse;
+      margin: 20px;
+    }
+
+    th {
+      background-color: #E63946;
+      color: white;
+      font-weight: bold;
+    }
+
+    th,
+    td {
+      border: 2px solid #1B1B1B;
+      padding: 20px;
+      text-align: center;
+      min-width: 100px;
+    }
+
+    td {
+      background-color: white;
+      color: #1B1B1B;
+      cursor: pointer;
+    }
+
+    td.used {
+      background-color: #ccc;
+      color: #999;
+      cursor: not-allowed;
+    }
+
+    .question-box {
+      background-color: #FFECA8;
+      padding: 20px;
+      margin: 20px;
+      width: 80%;
+      text-align: left;
+      font-size: 0.75em;
+      border: 4px double #E63946;
+      border-radius: 8px;
+      white-space: pre-wrap;
+      box-shadow: inset 0 0 10px #00000055;
+    }
+
+    .scoreboard {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      justify-content: center;
+      margin: 20px;
+    }
+
+    .team {
+      text-align: center;
+    }
+
+    .team input.name {
+      width: 120px;
+      margin-bottom: 5px;
+      font-size: 0.65em;
+      text-align: center;
+      font-family: 'Press Start 2P', monospace;
+    }
+
+    .team input.score {
+      width: 60px;
+      text-align: center;
+      font-size: 0.75em;
+      font-family: 'Press Start 2P', monospace;
+    }
+
+    .team .score-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 5px;
+      margin-top: 5px;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 0.75em;
+      margin: 5px;
+      background-color: #E63946;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-family: 'Press Start 2P', monospace;
+    }
+
+    button:hover {
+      background-color: #FF4F5E;
+    }
+
+    img {
+      max-width: min(90vw, 700px);
+      max-height: 80vh;
+      height: auto;
+      width: auto;
+      margin: 20px auto;
+      display: block;
+    }
+
+    .textbox img+img {
+      display: inline-block;
+      margin: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="title-box">Poké Trivia</div>
+  <div class="scoreboard-controls">
+    <button onclick="addTeam()">Add Team</button>
+    <button onclick="removeTeam()">Remove Last Team</button>
+    <button onclick="resetScores()">Reset Scores</button>
+  </div>
+  <div class="scoreboard" id="scoreboard"></div>
+  <div class="question-box" id="questionBox">Click a cell to show the question here.</div>
+  <table id="gameBoard">
+    <thead>
+      <tr>
+        <th></th>
+        <th>Emoji</th>
+        <th>Jifs</th>
+        <th>Gen 1</th>
+        <th>Questions</th>
+        <th>Nerd Shit</th>
+        <th>Puns</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+  <button onclick="resetBoard()">Reset Board</button>
+
+  <script src="questions.js"></script>
+  <script>
+    const board = document.getElementById('gameBoard').getElementsByTagName('tbody')[0];
+    const questionBox = document.getElementById('questionBox');
+    const scoreboardDiv = document.getElementById("scoreboard");
+
+    let teams = JSON.parse(localStorage.getItem("teams")) || ["Team 1", "Team 2", "Team 3"];
+    let scores = JSON.parse(localStorage.getItem("scores")) || Array(teams.length).fill(0);
+    const points = [100, 200, 300, 400, 500, 600];
+
+    function renderScoreboard() {
+      scoreboardDiv.innerHTML = "";
+      teams.forEach((name, i) => {
+        const div = document.createElement("div");
+        div.className = "team";
+
+        const nameInput = document.createElement("input");
+        nameInput.className = "name";
+        nameInput.value = name;
+        nameInput.oninput = () => {
+          teams[i] = nameInput.value;
+          saveState();
+        };
+
+        const scoreInput = document.createElement("input");
+        scoreInput.type = "number";
+        scoreInput.className = "score";
+        scoreInput.value = scores[i];
+        scoreInput.oninput = () => {
+          scores[i] = parseInt(scoreInput.value) || 0;
+          saveState();
+        };
+
+        const buttons = document.createElement("div");
+        buttons.className = "score-buttons";
+
+        const plusBtn = document.createElement("button");
+        plusBtn.textContent = "+";
+        plusBtn.onclick = () => {
+          scores[i] += 100;
+          renderScoreboard();
+          saveState();
+        };
+
+        const minusBtn = document.createElement("button");
+        minusBtn.textContent = "−";
+        minusBtn.onclick = () => {
+          scores[i] -= 100;
+          renderScoreboard();
+          saveState();
+        };
+
+        buttons.appendChild(plusBtn);
+        buttons.appendChild(minusBtn);
+
+        div.appendChild(nameInput);
+        div.appendChild(scoreInput);
+        div.appendChild(buttons);
+        scoreboardDiv.appendChild(div);
+      });
+    }
+
+    function addTeam() {
+      teams.push(`Team ${teams.length + 1}`);
+      scores.push(0);
+      renderScoreboard();
+      saveState();
+    }
+
+    function removeTeam() {
+      if (teams.length > 1) {
+        teams.pop();
+        scores.pop();
+        renderScoreboard();
+        saveState();
+      } else {
+        alert("At least one team is required.");
+      }
+    }
+
+    function resetScores() {
+      scores = Array(teams.length).fill(0);
+      renderScoreboard();
+      saveState();
+    }
+
+    function saveState() {
+      localStorage.setItem("teams", JSON.stringify(teams));
+      localStorage.setItem("scores", JSON.stringify(scores));
+    }
+
+    function resetBoard() {
+      createBoard();
+      questionBox.textContent = "Click a cell to show the question here.";
+    }
+
+    function createBoard() {
+      board.innerHTML = '';
+      points.forEach((val, i) => {
+        const row = document.createElement('tr');
+        const pointCell = document.createElement('td');
+        pointCell.textContent = val;
+        pointCell.style.fontWeight = 'bold';
+        row.appendChild(pointCell);
+        for (let j = 0; j < 6; j++) {
+          const cell = document.createElement('td');
+          cell.textContent = val;
+          cell.dataset.value = val;
+          cell.dataset.row = i;
+          cell.dataset.col = j;
+
+          cell.addEventListener('click', () => {
+            questionBox.textContent = `You selected Column ${j + 1}, ${val} points.`;
+            const q = questions[`${i}-${j}`];
+            if (!q) return;
+
+            const popup = window.open('', '_blank');
+            popup.moveTo(0, 0);
+            popup.resizeTo(screen.width, screen.height);
+
+            popup.document.write(`
+              <html>
+                <head>
+                  <title>Question</title>
+                  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+                  <style>
+                    body {
+                      background-color: #fffeca;
+                      color: #1B1B1B;
+                      font-family: sans-serif;
+                      text-align: center;
+                      padding: 20px;
+                    }
+                    img {
+                      max-width: min(90vw, 700px);
+                      max-height: 80vh;
+                      height: auto;
+                      width: auto;
+                      margin: 20px auto;
+                      display: inline-block;
+                    }
+                    .text {
+                      background-color: #FFECA8;
+                      border: 4px double #E63946;
+                      padding: 20px;
+                      margin: 20px auto;
+                      font-size: 0.75em;
+                      font-family: 'Press Start 2P', monospace;
+                      max-width: 90%;
+                      box-shadow: inset 0 0 10px #00000055;
+                      white-space: pre-wrap;
+                    }
+                    button {
+                      margin: 20px;
+                      padding: 20px 40px;
+                      font-size: 1.2em;
+                      background-color: #E63946;
+                      color: white;
+                      border: none;
+                      border-radius: 5px;
+                      font-family: 'Press Start 2P', monospace;
+                    }
+                    button:hover {
+                      background-color: #FF4F5E;
+                    }
+                    * {
+                      cursor: url('cursor.png') 16 16, auto !important;
+                    }
+                  </style>
+                </head>
+                <body>
+                  <div id="popupQuestion">${q.question}</div>
+                  <button onclick="document.getElementById('popupQuestion').innerHTML = \`${q.answer}\`">Show Answer</button>
+                  <button onclick="window.close();">Close</button>
+                </body>
+              </html>
+            `);
+            popup.document.close();
+
+            cell.classList.add("used");
+            cell.textContent = "";
+          });
+
+          cell.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            if (cell.classList.contains('used')) {
+              cell.classList.remove('used');
+              cell.textContent = val;
+            } else {
+              cell.classList.add('used');
+              cell.textContent = "";
+            }
+          });
+
+          row.appendChild(cell);
+        }
+        board.appendChild(row);
+      });
+    }
+
+    renderScoreboard();
+    createBoard();
+  </script>
+</body>
+
+</html>
